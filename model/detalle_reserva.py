@@ -2,13 +2,7 @@ from model.tipo_item import TipoItem
 
 class DetalleReserva:
 
-    def __init__(
-        self,
-        tipo_item: TipoItem,
-        descripcion: str,
-        cantidad: int,
-        precio_unitario: float
-    ):
+    def __init__(self,tipo_item: TipoItem, descripcion: str, cantidad: int, precio_unitario: float):
         self.tipo_item = tipo_item
         self.descripcion = descripcion
         self.cantidad = cantidad

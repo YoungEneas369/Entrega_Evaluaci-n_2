@@ -5,7 +5,6 @@ from model.paquete_nacional import PaqueteNacional
 from model.paquete_internacional import PaqueteInternacional
 from model.paquete_crucero import PaqueteCrucero
 from model.viajero import Viajero
-from model.persona import Persona
 from model.reserva import Reserva
 from model.detalle_reserva import DetalleReserva
 from servicios.mindicador import MiIndicador
@@ -57,19 +56,27 @@ def main():
                 continue
                 
             try:
-                precio = float(input("Ingrese precio base: "))
-                if precio <= 0:
+                precio_clp = float(input("Ingrese precio base (en Pesos Chilenos): "))
+                if precio_clp <= 0:
                     print("Error: El precio debe ser mayor a cero.")
                     continue
                     
                 tipo = input("Tipo ('nacional', 'internacional' o 'crucero'): ").strip().lower()
                 
+                # Conversión interna silenciosa para paquetes internacionales
+                if tipo in ['internacional', 'crucero']:
+                    servicio = MiIndicador()
+                    dolar = servicio.obtener_dolar()
+                    precio_guardado = precio_clp / dolar
+                else:
+                    precio_guardado = precio_clp
+                
                 if tipo == 'nacional':
-                    p = PaqueteNacional(None, nombre, precio, None)
+                    p = PaqueteNacional(None, nombre, precio_guardado, None)
                 elif tipo == 'internacional':
-                    p = PaqueteInternacional(None, nombre, precio, None)
+                    p = PaqueteInternacional(None, nombre, precio_guardado, None)
                 elif tipo == 'crucero':
-                    p = PaqueteCrucero(None, nombre, precio, None)
+                    p = PaqueteCrucero(None, nombre, precio_guardado, None)
                 else:
                     print("Error: Tipo inválido.")
                     continue
@@ -97,12 +104,17 @@ def main():
                 p = paquete_dao.buscar(id_buscar)
                 if p:
                     print(f"Actual: {p.nombre} - ${p.precio_base}")
-                    nuevo_precio = float(input("Ingrese nuevo precio base: "))
-                    if nuevo_precio <= 0:
+                    nuevo_precio_clp = float(input("Ingrese nuevo precio base (en Pesos Chilenos): "))
+                    if nuevo_precio_clp <= 0:
                         print("Error: El precio debe ser mayor a cero.")
                         continue
                         
-                    p.precio_base = nuevo_precio
+                    if isinstance(p, (PaqueteInternacional, PaqueteCrucero)):
+                        servicio = MiIndicador()
+                        dolar = servicio.obtener_dolar()
+                        p.precio_base = nuevo_precio_clp / dolar
+                    else:
+                        p.precio_base = nuevo_precio_clp
                     
                     if isinstance(p, PaqueteNacional):
                         tipo_actual = "nacional"
@@ -167,23 +179,44 @@ def main():
         elif opcion == '7':
             print("\n--- REGISTRAR RESERVA ---")
             try:
+                id_paquete = int(input("Ingrese ID del paquete a reservar: "))
+                paquete = paquete_dao.buscar(id_paquete)
+                if not paquete:
+                    print("Error: El paquete no existe.")
+                    continue
+                
+                # Validación de Pasaporte si es Internacional o Crucero
+                v = None
+                if isinstance(paquete, (PaqueteInternacional, PaqueteCrucero)):
+                    pasaporte = input("El paquete es internacional. Ingrese pasaporte del viajero: ").strip()
+                    try:
+                        # Esto validará la regla del negocio inmediatamente
+                        v = Viajero("11111111-1", "UsuarioPrueba", pasaporte)
+                    except ValueError as e:
+                        print(f"Operación denegada: {e}")
+                        continue
+                
                 cupos = int(input("Ingrese cupos actuales del proveedor en la fecha: "))
+                pasajeros = int(input("Ingrese cantidad de pasajeros: "))
+                
                 prov = Proveedor(1, "Latam Airlines")
                 prov.agregar_disponibilidad(Disponibilidad("2026-12-01", cupos))
                 
-                if not prov.tiene_cupos("2026-12-01"):
-                    print("Operación denegada: El proveedor no tiene cupos disponibles.")
+                if pasajeros > cupos:
+                    print("Operación denegada: El proveedor no tiene suficientes cupos.")
                     continue
                 
-                precio_total = float(input("Ingrese precio del paquete: "))
-                if precio_total <= 0:
-                    print("Error: El precio debe ser mayor a cero.")
-                    continue
+                print("Consultando valor del dólar actual...")
+                indicador = MiIndicador()
+                valor_dolar = indicador.obtener_dolar()
+                
+                precio_total = paquete.calcular_precio_final(valor_dolar) * pasajeros
+                print(f"Valor del dólar usado para la reserva: ${valor_dolar}")
                 
                 cliente = Cliente("Juan", "11111111-1")
-                agente = AgenteViajes("Pedro", "22222222-2", "pedrito", "123")
+                agente = AgenteViajes("Pedro", "22222222-2")
                 
-                reserva = Reserva(cliente, agente, None, prov, "2026-12-01", precio_total, 0)
+                reserva = Reserva(cliente, agente, paquete, prov, "2026-12-01", precio_total, 0, viajero=v)
                 reserva.agregar_detalle(DetalleReserva(TipoItem(1, "Vuelo"), "Santiago-Miami", 1, 150000))
                 reserva.agregar_detalle(DetalleReserva(TipoItem(2, "Hotel"), "Hotel Miami", 7, 50000))
                 reserva.agregar_detalle(DetalleReserva(TipoItem(3, "Seguro de Viaje"), "Cobertura Total", 1, 30000))
@@ -204,7 +237,8 @@ def main():
                 reserva.anticipo = anticipo
                 
                 if reserva.validar_confirmacion():
-                    prov.descontar_cupo("2026-12-01")
+                    for _ in range(pasajeros):
+                        prov.descontar_cupo("2026-12-01")
                     reserva_id = reserva_dao.insertar(reserva)
                     print("Operación exitosa: Reserva confirmada y guardada en BD.")
                     print(f"Saldo pendiente a pagar: ${total_real - anticipo:,.0f}")

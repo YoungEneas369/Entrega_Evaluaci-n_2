@@ -7,7 +7,7 @@ class Viajero(Persona):
 
     @property
     def numero_pasaporte(self):
-        return self.__numero_pasaporte
+        return self._numero_pasaporte
 
     @numero_pasaporte.setter
     def numero_pasaporte(self, valor):
@@ -17,5 +17,4 @@ class Viajero(Persona):
         valor = str(valor).strip().upper()
         if not valor.isalnum() or len(valor) < 6 or len(valor) > 12:
             raise ValueError("Pasaporte inválido. Debe tener entre 6 y 12 caracteres.")
-            
-        self.__numero_pasaporte = valor
+        self._numero_pasaporte = valor

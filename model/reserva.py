@@ -1,10 +1,7 @@
 from enum import Enum
-from model.excepciones import (
-    AnticipoInsuficienteError,
-    SinCuposError,
-    ValidacionError
-)
+from model.excepciones import (AnticipoInsuficienteError, SinCuposError, ValidacionError)
 from model.paquete_internacional import PaqueteInternacional
+from model.paquete_crucero import PaqueteCrucero
 from model.viajero import Viajero
 
 class EstadoReserva(str, Enum):
@@ -14,20 +11,7 @@ class EstadoReserva(str, Enum):
     CANCELADA = "CANCELADA"
 
 class Reserva:
-
-    def __init__(
-        self,
-        cliente,
-        agente,
-        paquete,
-        proveedor,
-        fecha_viaje,
-        precio_paquete_clp,
-        anticipo=0.0,
-        tipo_cambio=1.0,
-        estado=EstadoReserva.PENDIENTE,
-        viajero: Viajero = None
-    ):
+    def __init__(self, cliente, agente, paquete, proveedor, fecha_viaje, precio_paquete_clp, anticipo=0.0, tipo_cambio: float = 950.0, estado=EstadoReserva.PENDIENTE, viajero: Viajero = None):
         self.cliente = cliente
         self.agente = agente
         self.paquete = paquete
@@ -55,10 +39,7 @@ class Reserva:
         self.detalles.append(detalle)
 
     def total(self):
-        total_detalles = sum(
-            detalle.subtotal()
-            for detalle in self.detalles
-        )
+        total_detalles = sum(detalle.subtotal() for detalle in self.detalles)
         return self.precio_paquete_clp + total_detalles
 
     def saldo_pendiente(self):
@@ -83,9 +64,9 @@ class Reserva:
             self.estado = EstadoReserva.PAGADA
 
     def validar_confirmacion(self):
-        if isinstance(self.paquete, PaqueteInternacional):
+        if isinstance(self.paquete, (PaqueteInternacional, PaqueteCrucero)):
             if not self.viajero or not self.viajero.numero_pasaporte:
-                raise ValidacionError("Un paquete internacional requiere un Viajero con pasaporte válido.")
+                raise ValidacionError("Un paquete internacional o crucero requiere un Viajero con pasaporte válido.")
 
         if not self.proveedor.tiene_cupos(self.fecha_viaje):
             raise SinCuposError("No se puede confirmar la reserva porque el proveedor no tiene cupos para esa fecha.")

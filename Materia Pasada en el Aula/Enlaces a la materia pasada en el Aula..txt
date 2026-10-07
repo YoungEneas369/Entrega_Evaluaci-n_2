@@ -1,0 +1,7 @@
+Clase 1: https://icy-stone-015b2441e.7.azurestaticapps.net/2026/semestre2/bimestre1/poos/114-2B-F1/114-2A-F2/Clase_S5_Laboratorio.html
+Clase 2:https://icy-stone-015b2441e.7.azurestaticapps.net/2026/semestre2/bimestre1/poos/114-2B-F1/Clase_S6_DelDiagramaAlCodigo.html
+Clase 3:https://icy-stone-015b2441e.7.azurestaticapps.net/2026/semestre2/bimestre1/poos/114-2B-F1/114-2A-F2/Clase_S7_Herencia.html
+Clase 4:https://icy-stone-015b2441e.7.azurestaticapps.net/2026/semestre2/bimestre1/poos/114-2B-F1/114-2A-F2/Clase_S8_AbcExcepciones.html
+Clase 5:https://icy-stone-015b2441e.7.azurestaticapps.net/2026/semestre2/bimestre1/poos/114-2B-F1/114-2A-F2/Clase_UA2_Sesion9_ConexionBaseDatos.html
+Clase 6:https://icy-stone-015b2441e.7.azurestaticapps.net/2026/semestre2/bimestre1/poos/114-2B-F1/Clase_UA2_Sesion10_CrudSeguro.html
+Clase 7:https://icy-stone-015b2441e.7.azurestaticapps.net/2026/semestre2/bimestre1/poos/114-2B-F1/Clase_S15_ConsumoDeAPI.html
