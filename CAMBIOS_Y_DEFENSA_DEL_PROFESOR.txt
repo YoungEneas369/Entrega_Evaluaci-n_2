@@ -1,0 +1,83 @@
+================================================================================
+GUÍA TÉCNICA Y DE DEFENSA: MEJORA EN EL MANEJO DE LA API DEL DÓLAR
+Agencia de Viajes RutaSur - Evaluación Sumativa N°2 (POOS TI3V21)
+Integrantes: Cristopher Figueroa y Elías Reyes
+================================================================================
+
+1. ¿CUÁL FUE EL CAMBIO REALIZADO?
+--------------------------------------------------------------------------------
+Originalmente, cuando la API de "mindicador.cl" no respondía o se cortaba internet, 
+el sistema capturaba el error e inyectaba un valor fijo de contingencia ($950.0).
+
+Siguiendo la observación del profesor y el principio de software seguro, 
+se ELIMINÓ el valor fijo por defecto de $950.0 y se implementó una política de
+FALLO SEGURO (Fail-Secure / Fail-Closed):
+- Ahora, si la API no responde o no hay internet, se lanza la excepción propia:
+  `APITipoCambioError` (ubicada en model/excepciones.py).
+- Esta excepción se captura de manera controlada en `main.py`:
+  * En la Opción 6 (Calcular Precio con Dólar): Avisa que no se pudo obtener el 
+    dólar oficial y suspende el cálculo por seguridad financiera, sin caerse el script.
+  * En la Opción 7 (Registrar Reserva): Si el paquete depende de divisas (Internacional 
+    o Crucero), IMPIDE generar y confirmar la reserva.
+  * En las Opciones 1 y 3 (Crear/Modificar Paquete): Impide fijar precios en moneda 
+    extranjera si no hay tasa de cambio oficial.
+
+
+2. COMPORTAMIENTO INTELIGENTE SEGÚN EL TIPO DE PAQUETE
+--------------------------------------------------------------------------------
+¿Qué pasa con los Paquetes Nacionales cuando NO hay internet?
+- Los Paquetes Nacionales se cotizan directamente en Pesos Chilenos (CLP) y el 
+  enunciado establece que NO dependen del tipo de cambio.
+- Por lo tanto, el sistema NO consulta la API para paquetes nacionales:
+  -> Se pueden calcular precios (Opción 6) y se pueden registrar reservas (Opción 7)
+     incluso si el computador está completamente desconectado de internet.
+- Esto demuestra ante el profesor una separación coherente de reglas de negocio 
+  y que el software no bloquea operaciones innecesariamente.
+
+
+3. ARCHIVOS MODIFICADOS Y CÓMO QUEDÓ EL CÓDIGO
+--------------------------------------------------------------------------------
+A) servicios/mindicador.py:
+   - Importa `APITipoCambioError` de `model.excepciones`.
+   - Si `response.status_code == 200`, devuelve el valor de la serie.
+   - Si hay timeout o error de conexión (`requests.exceptions.RequestException`),
+     lanza `raise APITipoCambioError("No se pudo conectar a la API del dólar...")`.
+
+B) main.py:
+   - Importa `APITipoCambioError`.
+   - Opción 6:
+     * Si el paquete es `PaqueteNacional`, calcula en CLP directamente sin llamar a la API.
+     * Si es internacional/crucero, llama a la API. Si falla, captura `APITipoCambioError`,
+       muestra un mensaje de advertencia y vuelve al menú (cumple la prueba P17).
+   - Opción 7:
+     * Verifica si el paquete es internacional o crucero antes de consultar la API.
+     * Si no hay internet, captura `APITipoCambioError`, informa el bloqueo y NO guarda
+       la reserva en la base de datos SQLite.
+
+C) README.md:
+   - Se actualizó la sección 3 ("Decisiones de Seguridad") explicando el principio
+     de Fallo Seguro frente a la volatilidad cambiaria.
+   - Se incorporó en la sección 4 ("Uso de IA") esta recomendación como la segunda
+     sugerencia técnica adoptada, asegurando el puntaje completo en el Criterio 3.1.4.
+
+
+4. CÓMO EXPONER ESTO ANTE EL PROFESOR (GUION DE DEFENSA)
+--------------------------------------------------------------------------------
+Si el profesor pregunta:
+"¿Por qué quitaron el valor por defecto de $950 y qué hace el sistema sin internet?"
+
+Respuesta recomendada:
+"Profesor, inicialmente pensamos en un valor de contingencia de $950 para garantizar 
+la disponibilidad del servicio. Sin embargo, analizando el riesgo de negocio y los 
+principios de programación segura, nos dimos cuenta de que usar una tasa fija expone 
+a la agencia a pérdidas financieras directas si el dólar real está, por ejemplo, a $980.
+
+Por eso adoptamos el principio de 'Fallo Seguro' (Fail-Secure):
+1. Usamos nuestra excepción propia 'APITipoCambioError'.
+2. Si no hay internet o la API se cae, el sistema bloquea cualquier cotización o 
+   reserva que involucre divisas extranjeras para proteger el patrimonio de la empresa.
+3. El programa no se cae: captura la excepción en un try/except específico, emite un 
+   mensaje claro al usuario y vuelve al menú principal, cumpliendo la prueba P17.
+4. Y además, los paquetes nacionales siguen funcionando perfectamente sin internet 
+   porque están cotizados en pesos chilenos y no dependen del tipo de cambio."
+================================================================================

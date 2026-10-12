@@ -65,7 +65,7 @@ class Reserva:
 
     def validar_confirmacion(self):
         if isinstance(self.paquete, (PaqueteInternacional, PaqueteCrucero)):
-            if not self.viajero or not self.viajero.numero_pasaporte:
+            if not self.viajero or not self.viajero.validar_pasaporte():
                 raise ValidacionError("Un paquete internacional o crucero requiere un Viajero con pasaporte válido.")
 
         if not self.proveedor.tiene_cupos(self.fecha_viaje):

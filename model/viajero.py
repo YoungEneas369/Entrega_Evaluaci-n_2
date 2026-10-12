@@ -18,3 +18,7 @@ class Viajero(Persona):
         if not valor.isalnum() or len(valor) < 6 or len(valor) > 12:
             raise ValueError("Pasaporte inválido. Debe tener entre 6 y 12 caracteres.")
         self._numero_pasaporte = valor
+
+    def validar_pasaporte(self) -> bool:
+        """Método público correspondiente a + validarPasaporte(): Boolean del diagrama UML."""
+        return bool(self._numero_pasaporte and self._numero_pasaporte.isalnum() and 6 <= len(self._numero_pasaporte) <= 12)

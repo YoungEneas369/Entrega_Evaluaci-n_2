@@ -13,6 +13,7 @@ from model.disponibilidad import Disponibilidad
 from model.tipo_item import TipoItem
 from model.cliente import Cliente
 from model.agente_viajes import AgenteViajes
+from model.excepciones import (AnticipoInsuficienteError, SinCuposError, ValidacionError, APITipoCambioError)
 
 def menu():
     print("\n" + "="*45)
@@ -63,11 +64,16 @@ def main():
                     
                 tipo = input("Tipo ('nacional', 'internacional' o 'crucero'): ").strip().lower()
                 
-                # Conversión interna silenciosa para paquetes internacionales
+                # Conversión interna para paquetes internacionales/crucero
                 if tipo in ['internacional', 'crucero']:
-                    servicio = MiIndicador()
-                    dolar = servicio.obtener_dolar()
-                    precio_guardado = precio_clp / dolar
+                    try:
+                        servicio = MiIndicador()
+                        dolar = servicio.obtener_dolar()
+                        precio_guardado = precio_clp / dolar
+                    except APITipoCambioError as e:
+                        print(f"Error de conexión: {e}")
+                        print("No se puede registrar un paquete en dólares sin conexión a la API oficial.")
+                        continue
                 else:
                     precio_guardado = precio_clp
                 
@@ -110,9 +116,14 @@ def main():
                         continue
                         
                     if isinstance(p, (PaqueteInternacional, PaqueteCrucero)):
-                        servicio = MiIndicador()
-                        dolar = servicio.obtener_dolar()
-                        p.precio_base = nuevo_precio_clp / dolar
+                        try:
+                            servicio = MiIndicador()
+                            dolar = servicio.obtener_dolar()
+                            p.precio_base = nuevo_precio_clp / dolar
+                        except APITipoCambioError as e:
+                            print(f"Error de conexión: {e}")
+                            print("No se puede modificar la tarifa en dólares sin conexión a la API oficial.")
+                            continue
                     else:
                         p.precio_base = nuevo_precio_clp
                     
@@ -158,21 +169,28 @@ def main():
                 id_buscar = int(input("Ingrese ID del paquete: "))
                 p = paquete_dao.buscar(id_buscar)
                 if p:
-                    servicio = MiIndicador()
-                    dolar = servicio.obtener_dolar()
-                    print(f"Valor dólar obtenido: ${dolar}")
-                    
                     if isinstance(p, PaqueteNacional):
-                        print(f"Cálculo: ${p.precio_base:,.2f} (No aplica dólar)")
-                    elif isinstance(p, PaqueteInternacional):
-                        print(f"Cálculo: ${p.precio_base:,.2f} * ${dolar}")
-                    elif isinstance(p, PaqueteCrucero):
-                        print(f"Cálculo: ${p.precio_base:,.2f} * ${dolar} * 1.12")
+                        print("Tipo: Paquete Nacional")
+                        print(f"Cálculo: ${p.precio_base:,.2f} CLP (Tarifa en moneda nacional, no requiere dólar)")
+                        precio_final = p.calcular_precio_final()
+                        print(f"Precio final: ${precio_final:,.2f} CLP")
+                    else:
+                        servicio = MiIndicador()
+                        dolar = servicio.obtener_dolar()
+                        print(f"Valor dólar obtenido desde API: ${dolar}")
                         
-                    precio_final = p.calcular_precio_final(dolar)
-                    print(f"Precio final: ${precio_final:,.2f}")
+                        if isinstance(p, PaqueteInternacional):
+                            print(f"Cálculo: ${p.precio_base:,.2f} USD * ${dolar}")
+                        elif isinstance(p, PaqueteCrucero):
+                            print(f"Cálculo: ${p.precio_base:,.2f} USD * ${dolar} * 1.12 (recargo crucero)")
+                            
+                        precio_final = p.calcular_precio_final(dolar)
+                        print(f"Precio final: ${precio_final:,.2f} CLP")
                 else:
                     print("Error: Paquete no encontrado.")
+            except APITipoCambioError as e:
+                print(f"[ALERTA API] {e}")
+                print("Operación cancelada: No se puede calcular el precio sin el valor oficial del dólar para evitar pérdidas financieras.")
             except ValueError:
                 print("Error: ID inválido (debe ser número).")
                 
@@ -203,15 +221,18 @@ def main():
                 prov.agregar_disponibilidad(Disponibilidad("2026-12-01", cupos))
                 
                 if pasajeros > cupos:
-                    print("Operación denegada: El proveedor no tiene suficientes cupos.")
-                    continue
+                    raise SinCuposError("El proveedor no tiene suficientes cupos para los pasajeros solicitados.")
                 
-                print("Consultando valor del dólar actual...")
-                indicador = MiIndicador()
-                valor_dolar = indicador.obtener_dolar()
-                
-                precio_total = paquete.calcular_precio_final(valor_dolar) * pasajeros
-                print(f"Valor del dólar usado para la reserva: ${valor_dolar}")
+                if isinstance(paquete, (PaqueteInternacional, PaqueteCrucero)):
+                    print("Consultando valor oficial del dólar en la API...")
+                    indicador = MiIndicador()
+                    valor_dolar = indicador.obtener_dolar()
+                    print(f"Valor del dólar usado para la reserva: ${valor_dolar}")
+                    precio_total = paquete.calcular_precio_final(valor_dolar) * pasajeros
+                else:
+                    print("Paquete nacional: Cotización directa en Pesos Chilenos (no requiere dólar).")
+                    valor_dolar = 1.0
+                    precio_total = paquete.calcular_precio_final() * pasajeros
                 
                 cliente = Cliente("Juan", "11111111-1")
                 agente = AgenteViajes("Pedro", "22222222-2")
@@ -245,6 +266,15 @@ def main():
                     print(f"ID Reserva: {reserva_id} (Use la Opción 8 para consultar el detalle)")
                 else:
                     print("Operación denegada: El anticipo no alcanza el 50% requerido.")
+            except APITipoCambioError as e:
+                print(f"Operación denegada (Seguridad Financiera / Sin Conexión): {e}")
+                print("No se generó la reserva para evitar pérdidas por tipo de cambio desactualizado.")
+            except AnticipoInsuficienteError as e:
+                print(f"Operación denegada (Regla de Anticipo): {e}")
+            except SinCuposError as e:
+                print(f"Operación denegada (Regla de Proveedor): {e}")
+            except ValidacionError as e:
+                print(f"Operación denegada (Validación): {e}")
             except ValueError:
                 print("Error: Ingreso inválido. Deben ser números.")
             except Exception as e:
