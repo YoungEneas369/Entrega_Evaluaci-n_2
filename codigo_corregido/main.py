@@ -266,9 +266,9 @@ def main():
                     print(f"ID Reserva: {reserva_id} (Use la Opción 8 para consultar el detalle)")
                 else:
                     print("Operación denegada: El anticipo no alcanza el 50% requerido.")
-            except APITipoCambioError as e:
-                print(f"Operación denegada (Seguridad Financiera / Sin Conexión): {e}")
-                print("No se generó la reserva para evitar pérdidas por tipo de cambio desactualizado.")
+            except APITipoCambioError:
+                print("\nNo hay conexión a internet, no se puede cotizar la reserva.")
+                print("Aviso: Los paquetes nacionales sí se pueden reservar sin internet.")
             except AnticipoInsuficienteError as e:
                 print(f"Operación denegada (Regla de Anticipo): {e}")
             except SinCuposError as e:
