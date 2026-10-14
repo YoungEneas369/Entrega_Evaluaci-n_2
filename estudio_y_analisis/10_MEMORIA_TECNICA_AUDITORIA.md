@@ -89,7 +89,7 @@
 * **`model/paquete.py` (25 líneas):**
   * Clase abstracta `Paquete(ABC)`.
   * Atributos: `id_paquete`, `nombre`, `precio_base` (> 0), `proveedor_id`.
-  * Método abstracto: `calcular_precio_final(self, tipo_cambio=950)`.
+  * Método abstracto: `calcular_precio_final(self, tipo_cambio=None)`.
 * **`model/paquete_nacional.py` (10 líneas):**
   * `calcular_precio_final()`: Retorna `round(self.precio_base)` (sin tipo de cambio).
 * **`model/paquete_internacional.py` (11 líneas):**

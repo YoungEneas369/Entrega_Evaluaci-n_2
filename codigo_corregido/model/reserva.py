@@ -11,18 +11,18 @@ class EstadoReserva(str, Enum):
     CANCELADA = "CANCELADA"
 
 class Reserva:
-    def __init__(self, cliente, agente, paquete, proveedor, fecha_viaje, precio_paquete_clp, anticipo=0.0, tipo_cambio: float = 950.0, estado=EstadoReserva.PENDIENTE, viajero: Viajero = None):
+    def __init__(self, cliente, agente, paquete, proveedor, fecha_viaje, precio_paquete_clp, anticipo=0.0, estado=EstadoReserva.PENDIENTE, viajero: Viajero = None, tipo_cambio: float = None):
         self.cliente = cliente
         self.agente = agente
         self.paquete = paquete
         self.proveedor = proveedor
         self.fecha_viaje = fecha_viaje
         self.precio_paquete_clp = float(precio_paquete_clp)
-        self.tipo_cambio = float(tipo_cambio)
         self.detalles = []
         self.anticipo = anticipo
         self.estado = estado
         self.viajero = viajero
+        self.tipo_cambio = float(tipo_cambio) if tipo_cambio is not None else None
 
     @property
     def anticipo(self):

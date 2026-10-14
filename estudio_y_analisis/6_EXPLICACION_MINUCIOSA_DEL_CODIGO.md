@@ -329,7 +329,7 @@ ValidacionError             RecursoNoEncontradoError     AutenticacionError
 * **Método Abstracto Polimórfico:**
   ```python
   @abstractmethod
-  def calcular_precio_final(self, tipo_cambio: float = 950.0) -> float:
+  def calcular_precio_final(self, tipo_cambio: float = None) -> float:
       pass
   ```
 
@@ -339,7 +339,7 @@ ValidacionError             RecursoNoEncontradoError     AutenticacionError
 * **Clase:** `PaqueteNacional(Paquete)`
 * **Sobrescritura:**
   ```python
-  def calcular_precio_final(self, tipo_cambio: float = 950.0) -> float:
+  def calcular_precio_final(self, tipo_cambio: float = None) -> float:
       return round(self.precio_base)
   ```
   * **Regla de negocio:** Se cotiza en moneda local. No utiliza el tipo de cambio.
@@ -350,11 +350,12 @@ ValidacionError             RecursoNoEncontradoError     AutenticacionError
 * **Clase:** `PaqueteInternacional(Paquete)`
 * **Sobrescritura:**
   ```python
-  def calcular_precio_final(self, tipo_cambio: float = 950.0) -> float:
+  def calcular_precio_final(self, tipo_cambio: float = None) -> float:
+      if tipo_cambio is None: raise ValueError("El tipo de cambio es obligatorio para paquetes internacionales y no se puede asumir un valor por defecto.")
       if tipo_cambio <= 0: raise ValueError("El tipo de cambio debe ser mayor que cero.")
       return round(self.precio_base * tipo_cambio)
   ```
-  * **Regla de negocio:** El precio base está en dólares (USD). Se multiplica directamente por el valor oficial del dólar del día.
+  * **Regla de negocio:** El precio base está en dólares (USD). Se multiplica directamente por el valor oficial del dólar del día. No asume ningún valor por defecto si no hay conexión oficial.
 
 ---
 
@@ -362,11 +363,12 @@ ValidacionError             RecursoNoEncontradoError     AutenticacionError
 * **Clase:** `PaqueteCrucero(Paquete)`
 * **Sobrescritura:**
   ```python
-  def calcular_precio_final(self, tipo_cambio: float = 950.0) -> float:
+  def calcular_precio_final(self, tipo_cambio: float = None) -> float:
+      if tipo_cambio is None: raise ValueError("El tipo de cambio es obligatorio para paquetes de crucero y no se puede asumir un valor por defecto.")
       if tipo_cambio <= 0: raise ValueError("El tipo de cambio debe ser mayor que cero.")
       return round(self.precio_base * tipo_cambio * 1.12)
   ```
-  * **Regla de negocio:** Posee su propia fórmula de liquidación: convierte la tarifa en dólares y aplica un recargo marítimo y de tasas portuarias del 12% (`* 1.12`).
+  * **Regla de negocio:** Posee su propia fórmula de liquidación: convierte la tarifa en dólares y aplica un recargo marítimo y de tasas portuarias del 12% (`* 1.12`). Exige el tipo de cambio oficial del día.
 
 ---
 
@@ -376,7 +378,7 @@ ValidacionError             RecursoNoEncontradoError     AutenticacionError
   * `Reserva`: Entidad transaccional central.
 * **Constructor:**
   ```python
-  __init__(self, cliente, agente, paquete, proveedor, fecha_viaje, precio_paquete_clp, anticipo=0.0, tipo_cambio=950.0, estado=EstadoReserva.PENDIENTE, viajero=None)
+  __init__(self, cliente, agente, paquete, proveedor, fecha_viaje, precio_paquete_clp, anticipo=0.0, estado=EstadoReserva.PENDIENTE, viajero=None, tipo_cambio=None)
   ```
 * **Atributos clave:**
   * `self.detalles = []`: Lista de objetos `DetalleReserva` (Composición 1 a muchos).

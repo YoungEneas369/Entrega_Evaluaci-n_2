@@ -7,49 +7,45 @@
 
 ## 0. ACLARACIÓN PREVIA: EL GRAN MISTERIO DE LOS "TRES NOMBRES" (`self.nombre = nombre`)
 
-Antes de ver el paso a paso, resolvamos la duda más común que confunde a cualquiera en Python:
-¿Por qué en una sola línea vemos `nombre` repetido tantas veces?
+Antes de seguir el paso a paso, aclaremos qué significa cada nombre y por qué aparece una property. En `Persona`, el código relevante es:
 
 ```python
-class Persona:
-    def __init__(self, nombre: str):
-        self.nombre = nombre
+class Persona(ABC):
+  def __init__(self, nombre: str, rut: str):
+    self.nombre = nombre
+
+  @property
+  def nombre(self):
+    return self._nombre
+
+  @nombre.setter
+  def nombre(self, valor):
+    valor = str(valor).strip()
+    if len(valor) < 2:
+      raise ValueError("El nombre debe tener al menos 2 caracteres.")
+    if not valor.replace(" ", "").isalpha():
+      raise ValueError("El nombre solo puede contener letras.")
+    self._nombre = valor
 ```
 
-Parece un trabalenguas:
-1. `nombre` en el paréntesis del `__init__(self, nombre)`: Es la **variable temporal que viene desde afuera**. Es el dato crudo que alguien escribió (por ejemplo: `"Cristopher"`).
-2. `self.nombre = ...` (a la izquierda del signo `=`): **NO es una variable común**. Debido al decorador `@nombre.setter`, escribir `self.nombre =` en Python significa: *"Ejecuta de inmediato la función validadora `nombre(self, valor)`"*.
-3. `= nombre` (a la derecha del signo `=`): Es el dato que venía en el paréntesis de afuera (`"Cristopher"`), que entra como el argumento `valor` del setter.
+### Antes del código: parámetro, atributo y `self`
+Al crear `Persona("Cristopher", "11111111-1")`, el constructor recibe esos textos. `self` representa el objeto que se está construyendo; `nombre` y `rut` son parámetros locales que reciben los valores. El parámetro `nombre` no es todavía el almacenamiento permanente del objeto.
 
-### ¿Cómo funciona la tríada en la práctica?
+En `self.nombre = nombre`, la parte izquierda es el acceso público `nombre` del objeto; la parte derecha es el valor que recibió el parámetro. Como la clase definió `@nombre.setter`, Python ejecuta ese setter cuando se hace la asignación. El setter recibe ese valor en su propio parámetro, llamado `valor`, lo limpia y lo valida antes de guardarlo en `self._nombre`.
 
-```python
-class Persona:
-    # 1. EL CONSTRUCTOR: Recibe el dato desde el teclado o menú
-    def __init__(self, nombre: str):
-        self.nombre = nombre  # <-- Dispara al setter automáticamente
+### ¿Qué es una property?
+Una **property** (propiedad) permite leer o asignar un valor usando la sintaxis habitual de un atributo, aunque por detrás se ejecuten funciones. `@property` define el **getter**: se ejecuta al consultar `persona.nombre` y devuelve `self._nombre`. `@nombre.setter` define el **setter**: se ejecuta al asignar `persona.nombre = "Cristopher"` y valida antes de guardar.
 
-    # 2. EL GETTER (Sin llamarse 'get'): 
-    # El decorador @property disfraza una función como si fuera una variable.
-    # Cuando alguien escribe 'print(p.nombre)', Python ejecuta esto por detrás.
-    @property
-    def nombre(self) -> str:
-        return self._nombre  # <-- Devuelve el dato guardado en la caja real
+Por eso se escribe `persona.nombre`, sin `()`: se está leyendo o asignando una propiedad, no llamando un método normal. Un método como `validar_pasaporte()` sí lleva paréntesis al llamarlo.
 
-    # 3. EL SETTER (El guardia de seguridad):
-    # Cuando alguien escribe 'p.nombre = "algo"', Python salta aquí.
-    # 'valor' es lo que venía a la derecha del signo '='.
-    @nombre.setter
-    def nombre(self, valor: str) -> None:
-        valor = str(valor).strip()
-        if len(valor) < 2:
-            raise ValueError("El nombre debe tener al menos 2 caracteres.")
-        # Aquí recién se guarda en la variable real privada con guión bajo:
-        self._nombre = valor
-```
+El recorrido es: valor recibido por el constructor -> asignación a `self.nombre` -> validación en el setter -> almacenamiento en `self._nombre`. Si una regla falla, el setter lanza `ValueError`. Más adelante, leer `persona.nombre` ejecuta el getter y devuelve el valor almacenado.
 
-* **`self._nombre` (con guión bajo):** Es el **casillero real y privado** en la memoria del computador. Nadie de afuera debería tocarlo directamente.
-* **`nombre` (sin guión bajo):** Es la **puerta de entrada pública**. Siempre que alguien intenta leer o escribir en `nombre`, pasa por el guardia de seguridad (`@property` o `@setter`).
+### ¿Por qué guardar en `_nombre` y no directamente en `nombre`?
+`nombre` es la interfaz pública para consultar y cambiar el dato; `_nombre` es el atributo interno donde esta clase lo almacena. El constructor usa la interfaz pública para que la validación también se aplique al crear el objeto. Si asignara directamente a `_nombre`, se saltaría esa validación.
+
+El guión bajo de `_nombre` **no lo hace privado de verdad**: en Python es una convención que indica que otros componentes deberían tratarlo como interno y usar `nombre`. Se podría acceder a `persona._nombre`, pero así se evita el control del setter. Dos guiones bajos (`__nombre`) cambian el nombre internamente para reducir choques accidentales en subclases; tampoco son una medida de seguridad.
+
+El setter asigna a `self._nombre` para no llamarse a sí mismo. Si hiciera `self.nombre = valor`, activaría el mismo setter una y otra vez. El getter también lee `_nombre` directamente para evitar un ciclo similar.
 
 ---
 
@@ -98,10 +94,10 @@ El negocio vende 3 tipos de viaje. Cada uno calcula su precio de forma distinta.
 * **El método abstracto:**
   ```python
   @abstractmethod
-  def calcular_precio_final(self, tipo_cambio=950):
+  def calcular_precio_final(self, tipo_cambio=None):
       pass
   ```
-  Esto obliga a que cualquier paquete hijo tenga obligatoriamente esta función, pero con su propia fórmula.
+  Esto obliga a que cualquier paquete hijo tenga obligatoriamente esta función con su propia fórmula, sin asumir valores fijos si no hay red.
 
 ### 2.2 Los Tres Hijos y sus Fórmulas
 1. **`model/paquete_nacional.py`:**

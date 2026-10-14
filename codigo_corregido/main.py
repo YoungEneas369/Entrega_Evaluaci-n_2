@@ -237,7 +237,7 @@ def main():
                 cliente = Cliente("Juan", "11111111-1")
                 agente = AgenteViajes("Pedro", "22222222-2")
                 
-                reserva = Reserva(cliente, agente, paquete, prov, "2026-12-01", precio_total, 0, viajero=v)
+                reserva = Reserva(cliente, agente, paquete, prov, "2026-12-01", precio_total, 0, viajero=v, tipo_cambio=valor_dolar)
                 reserva.agregar_detalle(DetalleReserva(TipoItem(1, "Vuelo"), "Santiago-Miami", 1, 150000))
                 reserva.agregar_detalle(DetalleReserva(TipoItem(2, "Hotel"), "Hotel Miami", 7, 50000))
                 reserva.agregar_detalle(DetalleReserva(TipoItem(3, "Seguro de Viaje"), "Cobertura Total", 1, 30000))

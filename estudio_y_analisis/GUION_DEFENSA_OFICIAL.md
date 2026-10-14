@@ -11,6 +11,7 @@
 | Tiempo | Expositor | Tema Principal | Archivos de Apoyo |
 | :--- | :--- | :--- | :--- |
 | **0:00 - 1:30** | Cristopher | Introducción y Arquitectura en 3 Capas | `conectar.py`, estructura de carpetas |
+| **0:00 - 1:30** | Cristopher | Introducción y Arquitectura por Responsabilidades | `main.py`, `conectar.py`, estructura de carpetas |
 | **1:30 - 3:30** | Cristopher | Los 5 Requisitos de la Ficha en el Modelo POO | `model/` (`paquete.py`, `viajero.py`, `reserva.py`, `excepciones.py`) |
 | **3:30 - 5:00** | Cristopher | Flujo de la Transacción con Líneas de Detalle | `main.py` -> `reserva.py` -> `dao/reserva_dao.py` |
 | **5:00 - 7:00** | Elías | Modificaciones ES2 vs ES3 (API y Excepciones) | `servicios/mindicador.py`, `main.py` |
@@ -31,11 +32,9 @@
 > "Buenas tardes profesor Michael y compañeros. Junto a Elías presentamos la defensa de código de nuestro sistema de gestión para la **Agencia de Viajes RutaSur**, correspondiente a la Evaluación Sumativa N°3.
 > 
 > Nuestro software está organizado en una arquitectura de tres capas limpiamente separadas:
-> 1. La capa **`model/`**, donde reside la lógica del negocio pura con clases y objetos, sin ninguna consulta SQL.
-> 2. La capa **`dao/`**, que implementa el patrón Data Access Object para centralizar las consultas SQLite.
-> 3. La capa **`servicios/`**, encargada de la comunicación externa mediante la API del dólar.
-> 
-> Además, en `conectar.py` activamos de forma obligatoria la instrucción `PRAGMA foreign_keys = ON;` para garantizar que la base de datos proteja la integridad referencial y las claves foráneas entre reservas y sus detalles."
+> Nuestro programa separa las responsabilidades. `main.py` presenta el menú y coordina el flujo; `model/` contiene las entidades y reglas del negocio; `dao/` concentra el acceso a SQLite; y `servicios/` aísla la consulta externa del dólar.
+>
+> En `conectar.py` activamos `PRAGMA foreign_keys = ON` para que SQLite aplique la clave foránea definida entre una reserva y sus líneas de detalle. Esa relación sí está protegida; no todas las entidades del modelo tienen tablas o relaciones en la base de datos."
 
 ---
 
@@ -58,7 +57,7 @@
 > **3. Reglas de Negocio con Excepciones Propias:**  
 > En `model/excepciones.py` creamos excepciones específicas que heredan de una base común:
 > * `AnticipoInsuficienteError`: se lanza en `reserva.py` si el cliente abona menos del 50% del total de la reserva.
-> * `SinCuposError`: se lanza si la cantidad de pasajeros supera la disponibilidad del proveedor.
+> * `SinCuposError`: en la opción 7 de `main.py` se lanza si los pasajeros superan los cupos ingresados. Además, `Reserva.validar_confirmacion()` comprueba que exista al menos un cupo para la fecha; ese método no recibe la cantidad de pasajeros.
 > 
 > **4. Integrador Externo:**  
 > El servicio `servicios/mindicador.py` consulta el tipo de cambio oficial para cotizar los paquetes internacionales."
@@ -80,7 +79,9 @@
 > 1. Inserta primero la cabecera en la tabla `reserva` con `INSERT INTO reserva`.
 > 2. Recupera el ID autogenerado mediante `self.cursor.lastrowid`.
 > 3. Recorre la lista de detalles insertando cada fila en `detalle_reserva` vinculada a ese ID foráneo.
-> 4. Si todo es correcto ejecuta `commit()`. Si algo falla, el motor aborta la operación completa para evitar datos huérfanos.
+> 4. Si las inserciones terminan correctamente, ejecuta `commit()` para confirmarlas.
+>
+> Es importante describir el límite actual con precisión: `insertar()` no ejecuta `rollback()` si una inserción falla. Por eso no afirmamos que cualquier error revierta automáticamente toda la operación; una mejora sería añadir una reversión explícita ante errores.
 > 
 > Ahora le cedo la palabra a mi compañero Elías para explicar las modificaciones de la evaluación y la seguridad del sistema."
 
@@ -98,7 +99,7 @@
 > Ahora, en `servicios/mindicador.py`, ante un corte de red se lanza la excepción `APITipoCambioError`.  
 > 
 > **Segundo, captura de errores clara en `main.py`:**  
-> Reemplazamos la captura genérica `except Exception` por bloques específicos. Si falla la API, el sistema captura `APITipoCambioError` y le avisa directamente al usuario:  
+> Añadimos capturas específicas antes del bloque general. Si falla la API, el sistema captura `APITipoCambioError` y le avisa directamente al usuario:  
 > *'No hay conexión a internet, no se puede cotizar la reserva. Los paquetes nacionales sí se pueden reservar sin internet'*.  
 > De este modo, protegemos las finanzas del negocio y a la vez mantenemos el software resiliente y operativo para viajes nacionales."
 
@@ -112,12 +113,12 @@
 > "En materia de seguridad del código implementamos dos defensas clave:
 > 
 > **1. Prevención de Inyección SQL:**  
-> En todas las clases DAO (`paquete_dao.py` y `reserva_dao.py`), ninguna consulta concatena texto con variables. Usamos exclusivamente **consultas parametrizadas con signos de interrogación (`?`)**:
+> En los DAO, los valores variables de las consultas se envían mediante parámetros con signos de interrogación (`?`), en vez de concatenarlos dentro del SQL:
 > `cursor.execute('SELECT ... WHERE id = ?', (id,))`  
-> Esto delega la sanitización al motor de SQLite, neutralizando cualquier intento de inyección maliciosa.
+> Así SQLite trata ese dato como un valor y no como parte de la instrucción SQL. Es una defensa importante contra inyección en esos valores, no una garantía general de seguridad frente a cualquier problema.
 > 
 > **2. Encapsulamiento con Properties:**  
-> En `model/persona.py` y en las clases del modelo protegemos los atributos internos con guión bajo (por ejemplo `_rut` y `_nombre`). El decorador `@property` actúa como getter y el `@setter` valida los tipos y formatos antes de asignar memoria, impidiendo estados inconsistentes."
+> Algunas clases, como `Persona`, `Viajero`, `Reserva` y `DetalleReserva`, usan properties para controlar lecturas o asignaciones concretas. `@property` define la lectura; su `@setter` puede limpiar o validar el valor antes de guardarlo. El guión bajo inicial, como en `_nombre`, indica que el atributo es interno por convención, pero no lo vuelve privado de verdad ni todos los atributos del modelo usan properties."
 
 ---
 
@@ -128,7 +129,7 @@
 > **Elías:**  
 > "Por último, coordinamos el código con nuestro diagrama de clases UML:
 > * La relación de agregación entre `Reserva` y `DetalleReserva` se implementa mediante la lista de objetos `self.detalles`.
-> * La composición con `TipoItem` garantiza que cada detalle posea su categoría formal.
-> * Y el método público `validar_pasaporte()` en `Viajero` da cumplimiento exacto a la firma `+ validarPasaporte(): Boolean` del modelo.
+> * Cada `DetalleReserva` guarda una referencia a un `TipoItem`, y su setter comprueba que el valor sea una instancia de esa clase.
+> * El método público `validar_pasaporte()` en `Viajero` cumple la misma intención que `+ validarPasaporte(): Boolean` del diagrama; en el código Python usamos el nombre `validar_pasaporte`.
 > 
-> En conclusión, el sistema RutaSur no solo satisface los 5 requisitos de la ficha y las reglas de negocio, sino que cuenta con una arquitectura mantenible, segura y resistente a fallos. Quedamos atentos a sus preguntas, profesor."
+> En conclusión, el sistema RutaSur aplica los conceptos de orientación a objetos, validaciones, excepciones propias, consulta de un servicio externo y persistencia de reservas con sus detalles. También identificamos aspectos que se pueden fortalecer, como añadir `rollback()` ante errores en el guardado. Quedamos atentos a sus preguntas, profesor."

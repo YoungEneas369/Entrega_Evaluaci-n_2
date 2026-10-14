@@ -84,27 +84,29 @@ class Viajero(Persona):
 ```python
 # En model/paquete.py:
 @abstractmethod
-def calcular_precio_final(self, tipo_cambio=950):
+def calcular_precio_final(self, tipo_cambio=None):
     pass
 ```
 * **Cómo se lee en voz alta:**
-  > "El decorador `@abstractmethod` define un **contrato polimórfico**. Establece que toda subclase que herede de `Paquete` está obligada a implementar el método `calcular_precio_final()`. En la clase base no tiene código (`pass`) porque cada tipo de viaje tiene su propia regla matemática de cobro."
+  > "El decorador `@abstractmethod` define un **contrato polimórfico**. Establece que toda subclase que herede de `Paquete` está obligada a implementar el método `calcular_precio_final()`. No usamos ningún valor fijo por defecto (como $950) para no suponer datos ante caídas de red. En la clase base no tiene código (`pass`) porque cada tipo de viaje tiene su propia regla matemática de cobro."
 
 ---
 
 ### Caso G: Sobrescritura en Subclases
 ```python
 # En model/paquete_nacional.py:
-def calcular_precio_final(self, tipo_cambio=950):
+def calcular_precio_final(self, tipo_cambio=None):
     return round(self.precio_base)
 
 # En model/paquete_internacional.py:
-def calcular_precio_final(self, tipo_cambio=950):
+def calcular_precio_final(self, tipo_cambio=None):
+    if tipo_cambio is None: raise ValueError("El tipo de cambio es obligatorio para paquetes internacionales y no se puede asumir un valor por defecto.")
     if tipo_cambio <= 0: raise ValueError("El tipo de cambio debe ser mayor que cero.")
     return round(self.precio_base * tipo_cambio)
 
 # En model/paquete_crucero.py:
-def calcular_precio_final(self, tipo_cambio=950):
+def calcular_precio_final(self, tipo_cambio=None):
+    if tipo_cambio is None: raise ValueError("El tipo de cambio es obligatorio para paquetes de crucero y no se puede asumir un valor por defecto.")
     if tipo_cambio <= 0: raise ValueError("El tipo de cambio debe ser mayor que cero.")
     return round(self.precio_base * tipo_cambio * 1.12)
 ```

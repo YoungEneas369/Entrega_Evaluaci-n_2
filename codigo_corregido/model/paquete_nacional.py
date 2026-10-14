@@ -6,5 +6,5 @@ class PaqueteNacional(Paquete):
     def __init__(self, id_paquete, nombre, precio_base, proveedor_id):
         super().__init__(id_paquete, nombre, precio_base, proveedor_id)
 
-    def calcular_precio_final(self, tipo_cambio=950):
-        return round(self.precio_base) 
+    def calcular_precio_final(self, tipo_cambio=None):
+        return round(self.precio_base)

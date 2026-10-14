@@ -21,5 +21,5 @@ class Paquete(ABC):
         self._precio_base = valor
 
     @abstractmethod
-    def calcular_precio_final(self, tipo_cambio=950):
+    def calcular_precio_final(self, tipo_cambio=None):
         pass
